@@ -30,4 +30,4 @@ jobs:
         SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
         EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
         RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
-      run: python advanced_screener.py
+      run: python text_screener.py
