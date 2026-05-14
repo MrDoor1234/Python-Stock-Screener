@@ -232,7 +232,7 @@ def analyze_ticker_with_gemini(ticker, setup_type, price, extra_metrics):
     print(f"\n🤖 Gemini is searching the web for {ticker} news and calculating risk...")
 
     # NOTE: Paste your actual API key here, or set it as an environment variable
-    api_key = os.environ.get("GEMINI_API_KEY", API_KEY)
+    api_key = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 
     if api_key == "YOUR_GEMINI_API_KEY":
         return "⚠️ Error: Please replace 'YOUR_GEMINI_API_KEY' in the script with your actual API key to enable AI analysis."
