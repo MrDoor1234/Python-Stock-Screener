@@ -150,7 +150,7 @@ def screen_market(tickers, chunk_size=100):
         try:
             # Download 60 days of data to ensure moving averages can calculate properly
             # Setting threads=True speeds this up significantly
-            data = yf.download(chunk, period="60d", group_by="ticker", progress=False, threads=True)
+            data = yf.download(chunk, period="250d", group_by="ticker", progress=False, threads=True)
 
             for ticker in chunk:
                 try:
@@ -200,7 +200,7 @@ def screen_market(tickers, chunk_size=100):
 
                     # --- ALGORITHM 2: SWING TRADE (Pullback in Uptrend) ---
                     # Criteria: Price is above 50-day moving average, RSI < 35 (Oversold), High Liquidity
-                    if current_close > sma_50 and rsi_14 < 45 and avg_vol_20d > 1000000:
+                    if current_close > sma_50 and rsi_14 < 45 and avg_vol_20d > 500000:
                         swing_trade_watchlist.append({
                             'Ticker': ticker,
                             'Price': round(current_close, 2),
@@ -238,23 +238,41 @@ def analyze_ticker_with_gemini(ticker, setup_type, price, extra_metrics):
         return "⚠️ Error: Please replace 'YOUR_GEMINI_API_KEY' in the script with your actual API key to enable AI analysis."
 
     client = genai.Client(api_key=api_key)
-
+    
     # --- DYNAMIC AI INSTRUCTIONS ---
+#    if "Day Trade" in setup_type:
+#        timeframe_context = "You are analyzing an INTRADAY DAY TRADE. Focus on minute-by-minute price action, VWAP, pre-market levels, and intraday momentum."
+#        scenario_a = "SCENARIO A: The Bullish Continuation (Gap & Go / High-of-Day Breakout)\n- IF: (Describe intraday volume surge and price breaking morning resistance)"
+#        scenario_b = "SCENARIO B: The Morning Washout (Mean Reversion to VWAP)\n- IF: (Describe early selloff that finds support at VWAP or pre-market support)"
+#    else:
+#        timeframe_context = "You are analyzing a MULTI-DAY SWING TRADE. Focus on a multi-day Swing Trade strategy based on yesterday's FINALIZED daily candle and moving averages. Because the user places automated broker orders before the market opens, DO NOT tell the user to wait for a daily candle to close. Instead, give exact numerical price triggers for entry (e.g., 'If price breaks above yesterday's high of $45.50, trigger a Buy Stop order')."
+#        scenario_a = "SCENARIO A: The Reversal Confirmation (Bouncing off Support)\n- IF: (Describe the daily candle pattern needed to prove the pullback is over and buyers have stepped in)"
+#        scenario_b = "SCENARIO B: The Deeper Pullback (Buying the next level down)\n- IF: (Describe where the stock will fall to if current support breaks, e.g., the 200 SMA)"
+
     if "Day Trade" in setup_type:
-        timeframe_context = "You are analyzing an INTRADAY DAY TRADE. Focus on minute-by-minute price action, VWAP, pre-market levels, and intraday momentum."
-        scenario_a = "SCENARIO A: The Bullish Continuation (Gap & Go / High-of-Day Breakout)\n- IF: (Describe intraday volume surge and price breaking morning resistance)"
-        scenario_b = "SCENARIO B: The Morning Washout (Mean Reversion to VWAP)\n- IF: (Describe early selloff that finds support at VWAP or pre-market support)"
+        instructions = """
+                You are analyzing an INTRADAY DAY TRADE. Focus on minute-by-minute price action, VWAP, pre-market levels, and intraday momentum.
+                Output an 'If/Then Decision Matrix' with 3 distinct scenarios based on how the stock acts at the opening bell:
+                - Scenario A: The Bullish Continuation (Gap & Go / High-of-Day Breakout) 
+                - Scenario B: The Morning Washout (Mean Reversion to VWAP)
+                - Scenario C: Invalidation (What price action tells us to cancel the trade and walk away)
+                Provide exact numerical price levels for entries, stop losses, and profit targets for A and B.
+                """
     else:
-        timeframe_context = "You are analyzing a MULTI-DAY SWING TRADE. Focus on daily candles, macro support/resistance, the 50-day SMA, and multi-day trendlines."
-        scenario_a = "SCENARIO A: The Reversal Confirmation (Bouncing off Support)\n- IF: (Describe the daily candle pattern needed to prove the pullback is over and buyers have stepped in)"
-        scenario_b = "SCENARIO B: The Deeper Pullback (Buying the next level down)\n- IF: (Describe where the stock will fall to if current support breaks, e.g., the 200 SMA)"
+        instructions = """
+                If this is a viable trade focus exclusively on a multi-day Swing Trade strategy based on yesterday's FINALIZED daily candle and moving averages. 
+                The user is placing an automated 'Set and Forget' broker order at 8:45 AM before the market opens. 
+                DO NOT provide multiple scenarios or tell the user to wait for today's candle to form. 
+                Based on yesterday's data, provide EXACTLY ONE definitive trade plan. 
+                Explicitly state the exact order type to use (e.g., 'Buy Stop order' for a breakout, or 'Limit Buy order' for a pullback).
+                Provide the exact Entry Price, the exact Stop Loss price, and the exact Profit Target price to plug into the broker's OCO bracket.
+                """
+
 
     prompt = f"""
     You are an elite, quantitative stock market analyst. 
     First, use your Google Search tool to find the most recent news catalysts for {ticker} from the last 48 hours.
     Then, analyze this specific trade setup based on the technical metrics and the news you found.
-
-    {timeframe_context}
 
     TICKER: {ticker}
     CURRENT PRICE: ${price}
@@ -266,23 +284,7 @@ def analyze_ticker_with_gemini(ticker, setup_type, price, extra_metrics):
     VIABILITY EXPLANATION: (One sentence explaining why the setup is or is not viable)
     THE CATALYST: (One sentence explaining why the stock is moving based on your search)
 
-    IF/THEN DECISION MATRIX:
-
-    {scenario_a}
-    - THEN BUY:
-      - Entry: $X.XX
-      - Stop Loss: $X.XX
-      - Target: $X.XX
-
-    {scenario_b}
-    - THEN BUY:
-      - Entry: $X.XX
-      - Stop Loss: $X.XX
-      - Target: $X.XX
-
-    SCENARIO C: The Invalidation (Do Not Trade)
-    - IF: (Describe the price action, broken trendline, or news that invalidates this setup entirely)
-    - THEN: Do not trade.
+    {instructions}
 
     REASONING: (Two sentences explaining the technical levels and math behind your risk/reward strategy)
     """
