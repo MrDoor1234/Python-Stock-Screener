@@ -2,7 +2,7 @@ name: Daily Market Scanner
 
 on:
   schedule:
-    - cron: '0 12 * * 1-5'
+    - cron: '40 12 * * 1-5'
   workflow_dispatch: 
 
 env:
